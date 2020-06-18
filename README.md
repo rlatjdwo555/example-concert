@@ -148,7 +148,7 @@ public interface PaymentService {
 - 동기식 호출
 
 ```
-# Lecture.java
+# Booking.java
 
 @PostPersist
 public void onPostPersist(){
