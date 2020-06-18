@@ -7,6 +7,7 @@
 - [구현](#구현)
   - [DDD 의 적용](#ddd-의-적용)
   - [Gateway 적용](#Gateway-적용)
+  - [폴리글랏 퍼시스턴스](#폴리글랏-퍼시스턴스)
   - [동기식 호출 과 Fallback 처리](#동기식-호출-과-Fallback-처리)
   - [비동기식 호출 과 Eventual Consistency](#비동기식-호출-과-Eventual-Consistency)
 - [운영](#운영)
@@ -42,9 +43,7 @@
 
 ## Event Storming 결과
 
-<img src="https://user-images.githubusercontent.com/62231786/84783162-e5903a80-b023-11ea-9fb6-ffc453c534cf.png"/>
-
-<img src="https://user-images.githubusercontent.com/62231786/84783192-ef19a280-b023-11ea-9208-d5dd9246c6ce.jpg"/>
+<img src="https://user-images.githubusercontent.com/62231786/85047444-ce408100-b1cc-11ea-805f-1c2557c986c5.png"/>
 
 ```
 # 도메인 서열
@@ -55,16 +54,18 @@
 
 
 ## 헥사고날 아키텍처 다이어그램 도출
+
+* CQRS 를 위한 Mypage 서비스만 DB를 구분하여 적용
     
-![image](https://user-images.githubusercontent.com/62231786/84896907-c0f99880-b0df-11ea-9b34-fc4f9cb2934b.png)
+![image](https://user-images.githubusercontent.com/62231786/85047293-92a5b700-b1cc-11ea-9798-dfd58f79d993.png)
 
 
 # 구현
 
 ## DDD 의 적용
 
-분석/설계 단계에서 도출된 MSA는 총 6개로 아래와 같다.
-* View 는 CQRS 를 위한 서비스
+분석/설계 단계에서 도출된 MSA는 총 5개로 아래와 같다.
+* MyPage 는 CQRS 를 위한 서비스
 
 | MSA | 기능 | port | 조회 API |
 |---|:---:|:---:|:---:|
@@ -79,39 +80,57 @@
 
 ```
 spring:
+  profiles: default
   cloud:
     gateway:
       routes:
-        - id: course
+        - id: concert
           uri: http://localhost:8081
           predicates:
-            - Path=/courses/**
-        - id: lecture
+            - Path=/concerts/** 
+        - id: booking
           uri: http://localhost:8082
           predicates:
-            - Path=/lectures/**
-        - id: certification
+            - Path=/bookings/** 
+        - id: payment
           uri: http://localhost:8083
           predicates:
-            - Path=/certifications/**
-        - id: payment
+            - Path=/payments/** 
+        - id: user
           uri: http://localhost:8084
           predicates:
-            - Path=/payments/**
-        - id: student
+            - Path=/users/** 
+        - id: mypage
           uri: http://localhost:8085
           predicates:
-            - Path=/students/**
-        - id: view
-          uri: http://localhost:8086
-          predicates:
-            - Path=/view/**
+            - Path=/bookingHistories/**
+```
+
+
+## 폴리글랏 퍼시스턴스
+
+CQRS 를 위한 Mypage 서비스만 DB를 구분하여 적용함. 인메모리 DB인 hsqldb 사용.
+
+```
+<!-- 
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+ -->
+		<dependency>
+		    <groupId>org.hsqldb</groupId>
+		    <artifactId>hsqldb</artifactId>
+		    <version>2.4.0</version>
+		    <scope>runtime</scope>
+		</dependency>
 ```
 
 
 ## 동기식 호출 과 Fallback 처리
 
-수강신청(Lecture) > 결제(Payment) 간의 호출은 동기식 일관성을 유지하는 트랜잭션으로 처리
+예약 > 결제 간의 호출은 동기식 일관성을 유지하는 트랜잭션으로 처리
 
 - FeignClient 서비스 구현
 
@@ -120,8 +139,8 @@ spring:
 
 @FeignClient(name="payment", url="${feign.payment.url}", fallback = PaymentServiceFallback.class)
 public interface PaymentService {
-    @RequestMapping(method = RequestMethod.POST, path="/payments")
-    public void enroll(@RequestBody Payment payment);
+    @PostMapping(path="/payments")
+    public void requestPayment(Payment payment);
 }
 ```
 
@@ -132,37 +151,19 @@ public interface PaymentService {
 # Lecture.java
 
 @PostPersist
-    public void onPostPersist() {
-        Payment payment = new Payment();
-        payment.setCourseId(this.courseId);
-        payment.setStudentId(this.studentId);
-        payment.setStatus("Payment Requested");
+public void onPostPersist(){
+    BookingRequested bookingRequested = new BookingRequested();
+    BeanUtils.copyProperties(this, bookingRequested);
+    bookingRequested.setStatus(BookingStatus.BookingRequested.name());
+    bookingRequested.publishAfterCommit();
 
-        ResponseEntity studentResponse = LectureApplication.applicationContext.getBean(StudentService.class).selectOne(this.studentId);
-        ResponseEntity courseResponse = LectureApplication.applicationContext.getBean(CourseService.class).selectOne(this.courseId);
+    Payment payment = new Payment();
+    payment.setBookingId(this.id);
 
-        if(courseResponse.getStatusCode().equals(HttpStatus.OK) && studentResponse.getStatusCode().equals(HttpStatus.OK)) {
-            LectureApplication.applicationContext.getBean(PaymentService.class).enroll(payment);
-        }
-        else {
-            log.info("Payment Request Error : Check CourseId And StudentId");
-        }
-    }
+    Application.applicationContext.getBean(PaymentService.class).requestPayment(payment);
+}
 ```
 
-- 동기식 호출 테스트
-
-```
-# 결제서비스 중단
-
-# 수강신청
-http POST http://localhost:8082/lectures studentId=1 courseId=1 status=requested   #Fail
-
-# 결제서비스 재기동
-
-# 수강신청
-http POST http://localhost:8082/lectures studentId=1 courseId=1 status=requested   #Success
-```
 
 - Fallback 서비스 구현
 
@@ -186,13 +187,15 @@ public class PaymentServiceFallback implements PaymentService {
 - 비동기식 발신 구현
 
 ```
-# Course.java
+# Booking.java
 
-@PreRemove
-public void onPreRemove() {
-    CourseDeleted courseDeleted = new CourseDeleted();
-    BeanUtils.copyProperties(this, courseDeleted);
-    courseDeleted.publishAfterCommit();
+@PostUpdate
+public void onPostUpdate(){
+    if (BookingStatus.BookingApproved.name().equals(this.getStatus())) {
+        BookingApproved bookingApproved = new BookingApproved();
+        BeanUtils.copyProperties(this, bookingApproved);
+        bookingApproved.publishAfterCommit();
+    }
 }
 ```
 
@@ -202,46 +205,18 @@ public void onPreRemove() {
 # PolicyHandler.java
 
 @StreamListener(KafkaProcessor.INPUT)
-public void wheneverLectureCompleted(@Payload LectureCompleted lectureCompleted) {
-    if(lectureCompleted.isMe()) {
-        Certification certification = new Certification();
-        certification.setCourseId(lectureCompleted.getCourseId());
-        certification.setStatus("Certified");
-        certification.setStudentId(lectureCompleted.getStudentId());
-
-        certificationRepository.save(certification);
+public void paymentApproved(@Payload PaymentApproved paymentApproved){
+    if(paymentApproved.isMe()){
+	bookingRepository.findById(paymentApproved.getBookingId())
+	    .ifPresent(
+			booking -> {
+				booking.setStatus(BookingStatus.BookingApproved.name());;
+				bookingRepository.save(booking);
+		    }
+	    )
+	;
     }
 }
-```
-
-- 비동기식 호출 테스트
-
-```
-# 수료 서비스 중단
-
-# 수강완료
-http PATCH http://localhost:8082/lectures/1 status=completed
-
-# 수료 상태 조회 > 수료 데이터 없음
-
-# 수료 서비스 기동
-
-# 수료 조회
-"certifications": [
-  {
-    "studentId": 1,
-    "courseId": 1,
-    "status": "Certified",
-    "_links": {
-      "self": {
-        "href": "http://localhost:8083/certifications/1"
-      },
-      "certification": {
-        "href": "http://localhost:8083/certifications/1"
-      }
-    }
-  }
-]
 ```
 
 
@@ -261,7 +236,7 @@ http PATCH http://localhost:8082/lectures/1 status=completed
 ## 서킷 브레이킹 / 장애격리
 
 * Spring FeignClient + Hystrix 구현
-* Lecture 서비스 내 PaymentService FeignClient에 적용
+* Booking 서비스 내 PaymentService FeignClient에 적용
 
 - Hystrix 설정
 
@@ -291,45 +266,34 @@ try {
 - 부하 테스트 수행
 
 ```
-$ siege -c100 -t60S -r10 --content-type "application/json" 'http://localhost:8082/lectures/ POST {"courseId":1, "studentId":1}'
+$ siege -c100 -t60S -r10 --content-type "application/json" 'http://localhost:8082/bookings/ POST {"concertId":1, "userId":1, "qty":5}'
 ```
 
 - 부하 테스트 결과
 
 ```
-Hibernate: 
-    call next value for hibernate_sequence
-Hibernate: 
-    insert 
-    into
-        lecture
-        (canceled, completed, course_id, paid, status, student_id, lecture_id) 
-    values
-        (?, ?, ?, ?, ?, ?, ?)
-[strix-payment-6] o.s.c.openfeign.support.SpringEncoder    : Writing [edu.intensive.external.Payment@660e4680] > 정상 수행
+2020-06-19 01:54:52.576[0;39m [32mDEBUG[0;39m [35m6600[0;39m [2m---[0;39m [2m[container-0-C-1][0;39m [36mo.s.c.s.m.DirectWithAttributesChannel   [0;39m [2m:[0;39m preSend on channel 'event-in', message: GenericMessage [payload=byte[142], headers={kafka_offset=4013, scst_nativeHeadersPresent=true, kafka_consumer=org.apache.kafka.clients.consumer.KafkaConsumer@5775c5aa, deliveryAttempt=1, kafka_timestampType=CREATE_TIME, kafka_receivedMessageKey=null, kafka_receivedPartitionId=0, contentType=application/json, kafka_receivedTopic=sts, kafka_receivedTimestamp=1592499287785}]
 Circuit breaker has been opened. Fallback returned instead.
 Circuit breaker has been opened. Fallback returned instead.
-Circuit breaker has been opened. Fallback returned instead.
-[strix-payment-5] o.s.c.openfeign.support.SpringEncoder    : Writing [edu.intensive.external.Payment@30fac0da]
-[strix-payment-7] o.s.c.openfeign.support.SpringEncoder    : Writing [edu.intensive.external.Payment@14dfcb68]
-[strix-payment-2] o.s.c.openfeign.support.SpringEncoder    : Writing [edu.intensive.external.Payment@e03eab]
+[2m2020-06-19 01:54:52.576[0;39m [32mDEBUG[0;39m [35m6600[0;39m [2m---[0;39m [2m[o-8082-exec-153][0;39m [36mo.s.c.s.m.DirectWithAttributesChannel   [0;39m [2m:[0;39m postSend (sent=true) on channel 'event-out', message: GenericMessage [payload=byte[142], headers={contentType=application/json, id=cbdf4d07-547d-5dbe-80a1-659a0e00b607, timestamp=1592499291969}]
+[2m2020-06-19 01:54:52.576[0;39m [32mDEBUG[0;39m [35m6600[0;39m [2m---[0;39m [2m[o-8082-exec-166][0;39m [36mo.s.c.s.m.DirectWithAttributesChannel   [0;39m [2m:[0;39m postSend (sent=true) on channel 'event-out', message: GenericMessage [payload=byte[142], headers={contentType=application/json, id=3a646994-497f-717a-cb13-443133007248, timestamp=1592499291969}]
 ```
 
 ```
-defaulting to time-based testing: 60 seconds
+defaulting to time-based testing: 30 seconds
 
-{	"transactions":			         901,
+{	"transactions":			         447,
 	"availability":			      100.00,
-	"elapsed_time":			       59.65,
-	"data_transferred":		        0.25,
-	"response_time":		        5.82,
-	"transaction_rate":		       15.10,
+	"elapsed_time":			       29.92,
+	"data_transferred":		        0.10,
+	"response_time":		        6.11,
+	"transaction_rate":		       14.94,
 	"throughput":			        0.00,
-	"concurrency":			       87.86,
-	"successful_transactions":	         901,
+	"concurrency":			       91.21,
+	"successful_transactions":	         447,
 	"failed_transactions":		           0,
-	"longest_transaction":		       24.01,
-	"shortest_transaction":		        0.02
+	"longest_transaction":		       17.07,
+	"shortest_transaction":		        0.00
 }
 ```
 
@@ -352,49 +316,44 @@ kube-system                 kube-proxy-svkl4           100m (5%)     0 (0%)     
 
 - 오토스케일 설정
 ```
-kubectl autoscale deploy pay --min=1 --max=3 --cpu-percent=1
+kubectl autoscale deploy booking --min=1 --max=3 --cpu-percent=1
 ```
 
 - 부하 수행
 
 ```
-siege -c10 -t10S -r10 --content-type "application/json" 'http://a12cb0b3753c14281ba577ae539765a2-2145726089.ap-northeast-2.elb.amazonaws.com:8080/lectures POST {"courseId":5, "studentId":5}' -v
+siege -c100 -t60S -r10 --content-type "application/json" 'http://aa8dc72fe9cbb4ba0ba62c5720326102-1685876144.ap-northeast-2.elb.amazonaws.com:8080/bookings/ POST {"concertId":1, "userId":1, "qty":5}' -v
 ```
 
 - 모니터링
 
 ```
-kubectl get deploy lecture -w
+kubectl get deploy booking -w
 ```
 
 - 스케일 아웃 확인
 
 ```
 NAME      READY   UP-TO-DATE   AVAILABLE   AGE
-lecture   1/1     1            1           18h
+booking   1/1     1            1           5h9m
 ```
 
 ```
-HTTP/1.1 201     0.05 secs:     424 bytes ==> POST http://a12cb0b3753c14281ba577ae539765a2-2145726089.ap-northeast-2.elb.amazonaws.com:8080/lectures
-[error] unable to set close control sock.c:141: Invalid argument
-HTTP/1.1 201     0.08 secs:     424 bytes ==> POST http://a12cb0b3753c14281ba577ae539765a2-2145726089.ap-northeast-2.elb.amazonaws.com:8080/lectures
-[error] unable to set close control sock.c:141: Invalid argument
-HTTP/1.1 201     0.11 secs:     424 bytes ==> POST http://a12cb0b3753c14281ba577ae539765a2-2145726089.ap-northeast-2.elb.amazonaws.com:8080/lectures
-[error] unable to set close control sock.c:141: Invalid argument
+defaulting to time-based testing: 60 seconds
 
-Lifting the server siege...
-Transactions:                   1116 hits
-Availability:                 100.00 %
-Elapsed time:                   9.56 secs
-Data transferred:               0.45 MB
-Response time:                  0.08 secs
-Transaction rate:             116.74 trans/sec
-Throughput:                     0.05 MB/sec
-Concurrency:                    9.87
-Successful transactions:        1116
-Failed transactions:               0
-Longest transaction:            0.27
-Shortest transaction:           0.03
+{	"transactions":			        6316,
+	"availability":			      100.00,
+	"elapsed_time":			       60.00,
+	"data_transferred":		        1.43,
+	"response_time":		        0.94,
+	"transaction_rate":		      105.27,
+	"throughput":			        0.02,
+	"concurrency":			       99.46,
+	"successful_transactions":	        6316,
+	"failed_transactions":		           0,
+	"longest_transaction":		        6.22,
+	"shortest_transaction":		        0.05
+}
 ```
 
 
