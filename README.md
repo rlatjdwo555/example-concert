@@ -70,7 +70,7 @@
 | MSA | 기능 | port | 조회 API |
 |---|:---:|:---:|:---:|
 | Concert | 콘서트 관리 | 8081 | http://localhost:8081/cooncerts |
-| Booking | 예약 관리 | 8082 | http://localhost:8082/booings |
+| Booking | 예약 관리 | 8082 | http://localhost:8082/bookings |
 | Payment | 결제 관리 | 8083 | http://localhost:8083/payments |
 | User | 사용자 관리 | 8084 | http://localhost:8084/users |
 | MyPage | 콘서트 예약내역 관리 | 8086 | http://localhost:8085/myPage |
