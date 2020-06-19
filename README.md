@@ -48,7 +48,7 @@
 | 관리자가 콘서트를 등록한다. | ![image](https://user-images.githubusercontent.com/62231786/85086806-aa099200-b216-11ea-8ca4-50eb47c3b02b.JPG) |
 | 사용자가 회원가입을 한다. | ![image](https://user-images.githubusercontent.com/62231786/85086808-aa099200-b216-11ea-895e-3a7dcfeb4b71.JPG) |
 | 사용자가 콘서트를 예약한다.</br>예약 시, 결제가 요청된다. | ![image](https://user-images.githubusercontent.com/62231786/85086809-aaa22880-b216-11ea-9d5c-fcf88fbd2a27.JPG) |
-| 사용자가 예약한 콘서트를 결제한다.</br>결제가 완료되면 콘서트예약이 승인된다.</br>콘서트예약이 승인되면 티켓 수가 변경된다.| ![image](https://user-images.githubusercontent.com/62231786/85086811-aaa22880-b216-11ea-96aa-5ec29cd8a5d6.JPG) | 
+| 사용자가 예약한 콘서트를 결제한다.</br>결제가 완료되면 콘서트예약이 승인된다.</br>콘서트예약이 승인되면 티켓 수가 변경된다. (감소)| ![image](https://user-images.githubusercontent.com/62231786/85086811-aaa22880-b216-11ea-96aa-5ec29cd8a5d6.JPG) | 
 | 사용자가 예약 취소를 하면 결제가 취소된다.</br>결제가 취소되면 티켓 수가 변경된다. (증가) | ![image](https://user-images.githubusercontent.com/62231786/85086805-a8d86500-b216-11ea-900a-be7c1555e61d.JPG) |
 | 사용자가 콘서트 예약내역 상태를 조회한다. | [{"id":1,"bookingId":6659,"concertId":1,"userId":1,"status":"BookingRequested"},</br> {"id":2,"bookingId":6660,"concertId":3,"userId":1,"status":"PaymentCanceled"}] |
 
