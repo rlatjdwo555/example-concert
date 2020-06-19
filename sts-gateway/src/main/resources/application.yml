@@ -1,0 +1,82 @@
+server:
+  port: 8088
+
+---
+
+spring:
+  profiles: default
+  cloud:
+    gateway:
+      routes:
+        - id: concert
+          uri: http://localhost:8081
+          predicates:
+            - Path=/concerts/** 
+        - id: booking
+          uri: http://localhost:8082
+          predicates:
+            - Path=/bookings/** 
+        - id: payment
+          uri: http://localhost:8083
+          predicates:
+            - Path=/payments/** 
+        - id: user
+          uri: http://localhost:8084
+          predicates:
+            - Path=/users/** 
+        - id: mypage
+          uri: http://localhost:8085
+          predicates:
+            - Path=/bookingHistories/**
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - "*"
+            allowedMethods:
+              - "*"
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+
+
+---
+
+spring:
+  profiles: docker
+  cloud:
+    gateway:
+      routes:
+        - id: concert
+          uri: http://concert:8080
+          predicates:
+            - Path=/concerts/** 
+        - id: booking
+          uri: http://booking:8080
+          predicates:
+            - Path=/bookings/** 
+        - id: payment
+          uri: http://payment:8080
+          predicates:
+            - Path=/payments/** 
+        - id: user
+          uri: http://user:8080
+          predicates:
+            - Path=/users/** 
+        - id: mypage
+          uri: http://mypage:8080
+          predicates:
+            - Path=/bookingHistories/**
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - "*"
+            allowedMethods:
+              - "*"
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+
+server:
+  port: 8080
