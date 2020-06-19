@@ -239,11 +239,11 @@ public void paymentApproved(@Payload PaymentApproved paymentApproved){
 
 - CodeBuild 기반으로 파이프라인 구성
 
-<img src="https://user-images.githubusercontent.com/62231786/84913102-1c825100-b0f5-11ea-9b92-5119abc18415.png"/>
+<img src="https://user-images.githubusercontent.com/62231786/85087121-927ed900-b217-11ea-8f57-bbd4efc25997.JPG"/>
 
 - Git Hook 연경
 
-<img src="https://user-images.githubusercontent.com/62231786/84975759-38bbd780-b161-11ea-94fc-08cdc93f0f18.JPG" />
+<img src="https://user-images.githubusercontent.com/62231786/85087123-93b00600-b217-11ea-90b3-4de01d03583a.JPG" />
 
 
 ## 서킷 브레이킹 / 장애격리
@@ -316,15 +316,16 @@ defaulting to time-based testing: 30 seconds
 - 현재 상태 확인
 
 ```
-Non-terminated Pods:          (6 in total)
-Namespace                   Name                       CPU Requests  CPU Limits  Memory Requests  Memory Limits  AGE
----------                   ----                       ------------  ----------  ---------------  -------------  ---
-default                     httpie                     0 (0%)        0 (0%)      0 (0%)           0 (0%)         18h
-default                     lecture-879d9f5fb-vs2gm    0 (0%)        0 (0%)      0 (0%)           0 (0%)         11h
-kafka                       my-kafka-0                 0 (0%)        0 (0%)      0 (0%)           0 (0%)         18h
-kafka                       my-kafka-zookeeper-1       0 (0%)        0 (0%)      0 (0%)           0 (0%)         26h
-kube-system                 aws-node-l5xq4             10m (0%)      0 (0%)      0 (0%)           0 (0%)         43h
-kube-system                 kube-proxy-svkl4           100m (5%)     0 (0%)      0 (0%)           0 (0%)         43h
+  Namespace                   Name                        CPU Requests  CPU Limits  Memory Requests  Memory Limits  AGE
+  ---------                   ----                        ------------  ----------  ---------------  -------------  ---
+  default                     booking-7764c68d4b-27jrp    0 (0%)        0 (0%)      0 (0%)           0 (0%)         9h
+  default                     concert-6b54bd565c-grvnf    0 (0%)        0 (0%)      0 (0%)           0 (0%)         15h
+  default                     payment-684fd5785c-67ptn    0 (0%)        0 (0%)      0 (0%)           0 (0%)         9h
+  kafka                       my-kafka-0                  0 (0%)        0 (0%)      0 (0%)           0 (0%)         144m
+  kafka                       my-kafka-zookeeper-2        0 (0%)        0 (0%)      0 (0%)           0 (0%)         16h
+  kube-system                 aws-node-5rd64              10m (0%)      0 (0%)      0 (0%)           0 (0%)         16h
+  kube-system                 coredns-555b56bfbb-mj2pk    100m (5%)     0 (0%)      70Mi (2%)        170Mi (6%)     16h
+  kube-system                 kube-proxy-bmc2z            100m (5%)     0 (0%)      0 (0%)           0 (0%)         16h
 ```
 
 - 오토스케일 설정
@@ -372,7 +373,4 @@ defaulting to time-based testing: 60 seconds
 
 ## 무정지 재배포
 
-<img src="https://user-images.githubusercontent.com/62231786/84969468-bd075e00-b153-11ea-8c28-594aceb378c7.JPG" />
-<img src="https://user-images.githubusercontent.com/62231786/84969469-bd9ff480-b153-11ea-9180-a4f36cf63938.JPG" />
-<img src="https://user-images.githubusercontent.com/62231786/84969470-bd9ff480-b153-11ea-9159-d5f37bb10174.JPG" />
-<img src="https://user-images.githubusercontent.com/62231786/84969460-bbd63100-b153-11ea-9368-67a78fcd3308.JPG" />
+<img src="https://user-images.githubusercontent.com/62231786/85087355-497b5480-b218-11ea-804c-6e884f60c92f.JPG" />
